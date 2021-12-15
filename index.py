@@ -3,8 +3,8 @@ from dash import html
 from dash.dependencies import Input, Output
 
 from app import app
-from layouts import sidebar, layout_index, layout_page_0, layout_page_1, layout_page_2, layout_page_3, layout_page_4, \
-    layout_page_5
+from layouts import sidebar, layout_index, layout_page_0, layout_page_1, \
+    layout_page_2, layout_page_3, layout_page_4, layout_page_5
 import callbacks
 
 app.layout = html.Div([
@@ -17,17 +17,17 @@ app.layout = html.Div([
 @app.callback(Output('page-content', 'children'),
               Input('url', 'pathname'))
 def display_page(pathname):
-    if pathname == "/page-0":
+    if pathname == "/data":
         return layout_page_0
-    elif pathname == "/page-1":
+    elif pathname == "/logistic-regression":
         return layout_page_1
-    elif pathname == "/page-2":
+    elif pathname == "/decision-tree":
         return layout_page_2
-    elif pathname == "/page-3":
+    elif pathname == "/random-forest":
         return layout_page_3
-    elif pathname == "/page-4":
+    elif pathname == "/xgboost":
         return layout_page_4
-    elif pathname == "/page-5":
+    elif pathname == "/app-test":
         return layout_page_5
     else:
         return layout_index
