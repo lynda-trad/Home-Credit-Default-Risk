@@ -25,7 +25,7 @@ def display_page(pathname):
         return layout_page_2
     elif pathname == "/random-forest":
         return layout_page_3
-    elif pathname == "/xgboost":
+    elif pathname == "/kneighbors":
         return layout_page_4
     elif pathname == "/app-test":
         return layout_page_5

@@ -12,7 +12,8 @@ import graphviz
 # Machine Learning Library
 from sklearn import metrics
 from sklearn.metrics import multilabel_confusion_matrix, classification_report, accuracy_score, precision_score
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV, learning_curve
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 from sklearn.impute import SimpleImputer
 import joblib
@@ -96,36 +97,53 @@ balanced_count = 'Target distribution after:\n0: ' + str(app_train['TARGET'].val
 compare_balance = unbalanced_count + '\n' + balanced_count
 print("balanced fig\n")
 
+
 # Gender Distribution
-gender_group = app_train.groupby(['CODE_GENDER']).size().reset_index(name='count')
-gender_fig = px.pie(gender_group,
-                    values='count',
-                    names='CODE_GENDER',
-                    title='Gender Distribution',
-                    height=700,
-                    width=1000
-                    )
+def gender_distribution():
+    gender_group = app_train.groupby(['CODE_GENDER']).size().reset_index(name='count')
+    return px.pie(gender_group,
+                  values='count',
+                  names='CODE_GENDER',
+                  title='Gender Distribution',
+                  height=700,
+                  width=1000
+                  )
+
+
+gender_fig = gender_distribution()
 print("gender distribution\n")
 
+
 # Contract Type Distribution
-contract_group = app_train.groupby(['NAME_CONTRACT_TYPE']).size().reset_index(name='count')
-contract_fig = px.pie(contract_group, values='count', names='NAME_CONTRACT_TYPE', title='Contract Type Distribution')
+def contract_distribution():
+    contract_group = app_train.groupby(['NAME_CONTRACT_TYPE']).size().reset_index(name='count')
+    return px.pie(contract_group,
+                  values='count',
+                  names='NAME_CONTRACT_TYPE',
+                  title='Contract Type Distribution')
+
+
+contract_fig = contract_distribution()
 print("contract distribution\n")
+
 
 # DAYS BIRTH feature
 # TODO
 #  (app_train['DAYS_BIRTH'] / -365).describe()
 
 # Min - Max
-mini = abs(app_train['DAYS_BIRTH'].max())
-if mini > 365:
-    birth_mini = "Days birth min: " + str(mini / 365) + " years\n"
-else:
-    "Days birth min: " + str(mini) + " days\n"
+def birth_min_max():
+    mini = abs(app_train['DAYS_BIRTH'].max())
+    if mini > 365:
+        birth_mini = "Days birth min: " + str(mini / 365) + " years\n"
+    else:
+        "Days birth min: " + str(mini) + " days\n"
+    maxi = abs(app_train['DAYS_BIRTH'].min())
+    birth_maxi = "Days birth max: " + str(maxi / 365) + " years\n"
+    return birth_mini + '\n' + birth_maxi
 
-maxi = abs(app_train['DAYS_BIRTH'].min())
-birth_maxi = "Days birth max: " + str(maxi / 365) + " years\n"
-age_minmax = birth_mini + '\n' + birth_maxi
+
+age_minmax = birth_min_max()
 print("birth minmax\n")
 
 # Boxplot
@@ -137,23 +155,29 @@ daysbirth_boxplot = px.box(app_train,
                            )
 print("birth boxplot\n")
 
+
 # Label encoding
-le = LabelEncoder()
-le_count = 0
 
-for col in app_train:
-    if app_train[col].dtype == 'object':
-        le.fit(app_train[col])
-        app_train[col] = le.transform(app_train[col])
-        app_test[col] = le.transform(app_test[col])
-        le_count += 1
-app_train.reset_index()
-app_test.reset_index()
+def labelEncodingAppTrain():
+    le = LabelEncoder()
+    count = 0
+    for col in app_train:
+        if app_train[col].dtype == 'object':
+            le.fit(app_train[col])
+            app_train[col] = le.transform(app_train[col])
+            app_test[col] = le.transform(app_test[col])
+            count += 1
+    app_train.reset_index()
+    app_test.reset_index()
+    return app_train, app_test, count
 
+
+app_train, app_test, le_count = labelEncodingAppTrain()
 label_encoding_str = '%d columns were label encoded.' % le_count
 print("label encoding\n")
 
 # Replacing Infinite values with NaN values
+
 app_train.replace([np.inf, -np.inf], np.nan, inplace=True)
 app_test.replace([np.inf, -np.inf], np.nan, inplace=True)
 imputer = SimpleImputer(missing_values=np.nan, strategy="median").fit(app_train)
@@ -164,21 +188,26 @@ imputer = imputer.fit_transform(app_test)
 app_test = pd.DataFrame(imputer, columns=app_test.columns.values.tolist())
 print("infinite and nan values\n")
 
+
 # Days Employed feature
 
 # TODO
 #  (app_train['DAYS_EMPLOYED'] / -365).describe()
 
 # Min - Max
-mini = abs(app_train['DAYS_EMPLOYED'].max())
-if mini > 365:
-    employ_min = "Days employed min :" + str(mini / 365) + "years"
-else:
-    employ_min = "Days employed min :" + str(mini) + "days"
+def employ_min_max():
+    mini = abs(app_train['DAYS_EMPLOYED'].max())
+    if mini > 365:
+        employ_min = "Days employed min :" + str(mini / 365) + "years"
+    else:
+        employ_min = "Days employed min :" + str(mini) + "days"
 
-maxi = abs(app_train['DAYS_EMPLOYED'].min())
-employ_max = "Days employed max :" + str(maxi / 365) + "years"
-employ_minmax = employ_min + '\n' + employ_max
+    maxi = abs(app_train['DAYS_EMPLOYED'].min())
+    employ_max = "Days employed max :" + str(maxi / 365) + "years"
+    return employ_min + '\n' + employ_max
+
+
+employ_minmax = employ_min_max()
 print("employed minmax\n")
 
 # Removing anomalies
@@ -195,12 +224,18 @@ employ_boxplot_af = px.box(app_train,
                            )
 print("employ boxplot\n")
 
+
 # Splitting data into train / test
-Xdf = app_train
-Xdf.drop("TARGET", axis=1)
-X = np.array(Xdf)
-y = np.array(app_train["TARGET"])
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y)
+def data_split():
+    Xdf = app_train
+    Xdf.drop("TARGET", axis=1)
+    X = np.array(Xdf)
+    y = np.array(app_train["TARGET"])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y)
+    return X, y, X_train, X_test, y_train, y_test
+
+
+X, y, X_train, X_test, y_train, y_test = data_split()
 # real = "Real values:\n\n" + y_test
 print("split data into test/train\n")
 
@@ -213,34 +248,47 @@ y_pred = LR.predict(X_test)
 #  LR_results = LR_predictions + '\n' + real
 print("LR predict\n")
 
-# LR Confusion matrix
-conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-x = ['0', '1']
-y = ['1', '0']
-conf_value = [[str(y) for y in x] for x in conf_matrix]
-LR_conf_fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
 
-LR_conf_str = 'The confusion matrix shows us the number of :\n' + \
-              '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-              '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-              '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-              '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+# LR Confusion matrix
+def LR_confus_matrix():
+    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    LR_str = 'The confusion matrix shows us the number of :\n' + \
+          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, LR_str
+
+
+LR_conf_fig, LR_conf_str = LR_confus_matrix()
 print("LR confusion matrix\n")
 
+
 # Model score
-LR_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
-          "\nAccuracy score using cross validation:" + \
-          str(round((cross_val_score(LR, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
-print("LR accuracy score\n")
+def LR_model_score():
+    LR_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
+              "\nAccuracy score using cross validation:" + \
+              str(round((cross_val_score(LR, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
+    print("LR accuracy score\n")
 
-LR_precis = "Precision score:" + str(round((precision_score(y_test, y_pred, average='macro') * 100), 2)) + '%\n'
-print("LR precision score\n")
+    LR_precis = "Precision score:" + str(round((precision_score(y_test, y_pred, average='macro') * 100), 2)) + '%\n'
+    print("LR precision score\n")
 
-LR_recall = "Recall score:" + str(round((metrics.recall_score(y_test, y_pred) * 100), 2)) + '%\n'
-print("LR recall score\n")
+    LR_recall = "Recall score:" + str(round((metrics.recall_score(y_test, y_pred) * 100), 2)) + '%\n'
+    print("LR recall score\n")
 
-LR_F1 = "F1 Score:", str(round((metrics.f1_score(y_test, y_pred) * 100), 2)) + '%\n'
-print("LR F1 score\n")
+    LR_F1 = "F1 Score:", str(round((metrics.f1_score(y_test, y_pred) * 100), 2)) + '%\n'
+    print("LR F1 score\n")
+    return LR_accu, LR_precis, LR_recall, LR_F1
+
+
+LR_accu, LR_precis, LR_recall, LR_F1 = LR_model_score()
+print("LR Model score\n")
+
 
 # ROC CURVE
 # TODO
@@ -253,10 +301,15 @@ print("LR F1 score\n")
 #  plt.show()
 
 # Testing on app-test
-app_test_LR = app_test.copy()
-app_test_LR['TARGET'] = 0
-y_pred_test = LR.predict(app_test_LR)
-app_test_LR['TARGET'] = y_pred_test.astype(int)
+def LR_app_test():
+    app_test_LR = app_test.copy()
+    app_test_LR['TARGET'] = 0
+    y_pred_test = LR.predict(app_test_LR)
+    app_test_LR['TARGET'] = y_pred_test.astype(int)
+    return app_test_LR
+
+
+app_test_LR = LR_app_test()
 # TODO print
 print("LR app-test\n")
 
@@ -264,22 +317,28 @@ print("LR app-test\n")
 DT = DecisionTreeClassifier(criterion='gini')
 DT.fit(X_train, y_train)
 y_pred = DT.predict(X_test)
+
+
 # TODO
 #  DT_predictions = "Predictions:\n\n" + str(y_pred) + '\n'
 #  DT_results = DT_predictions + '\n' + real
 
 # DT Confusion Matrix
-conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-x = ['0', '1']
-y = ['1', '0']
-conf_value = [[str(y) for y in x] for x in conf_matrix]
-DT_conf_fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+def DT_confus_matrix():
+    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    DT_str = 'The confusion matrix shows us the number of :\n' + \
+          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, DT_str
 
-DT_conf_str = 'The confusion matrix shows us the number of :\n' + \
-              '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-              '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-              '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-              '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+
+DT_conf_fig, DT_conf_str = DT_confus_matrix()
 print("DT confusion matrix\n")
 
 # Model score
@@ -288,12 +347,18 @@ DT_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 
           str(round((cross_val_score(DT, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
 print("DT accuracy score\n")
 
+
 # Testing on app-test
-app_test_DT = app_test.copy()
-app_test_DT['TARGET'] = 0
-y_pred_test = DT.predict(app_test_DT)
-app_test_DT['TARGET'] = y_pred_test.astype(int)
+def DT_app_test():
+    app_test_DT = app_test.copy()
+    app_test_DT['TARGET'] = 0
+    y_pred_test = DT.predict(app_test_DT)
+    app_test_DT['TARGET'] = y_pred_test.astype(int)
+    return app_test_DT
+
+
 # TODO print
+app_test_DT = DT_app_test()
 print('DT app-test\n')
 
 # Random Forest
@@ -306,17 +371,23 @@ y_pred = RF.predict(X_test)
 #  RF_results = RF_predictions + '\n' + real
 print("RF predict\n")
 
+
 # RF Confusion Matrix
-conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-x = ['0', '1']
-y = ['1', '0']
-conf_value = [[str(y) for y in x] for x in conf_matrix]
-RF_conf_fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
-RF_conf_str = 'The confusion matrix shows us the number of :\n' + \
-              '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-              '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-              '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-              '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+def RF_confus_matrix():
+    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    RF_str = 'The confusion matrix shows us the number of :\n' + \
+          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, RF_str
+
+
+RF_conf_fig, RF_conf_str = RF_confus_matrix()
 print("RF confusion matrix\n")
 
 # Model score
@@ -325,27 +396,121 @@ RF_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 
           str(round((cross_val_score(RF, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
 print("RF accuracy score\n")
 
-# Testing on app-test
-app_test_RF = app_test.copy()
-app_test_RF['TARGET'] = 0
-y_pred_test = RF.predict(app_test_RF)
-app_test_RF['TARGET'] = y_pred_test.astype(int)
-print("RF tapp-test\n")
-# TODO print
 
-# XGBoost
-# TODO
+# Testing on app-test
+def RF_app_test():
+    app_test_RF = app_test.copy()
+    app_test_RF['TARGET'] = 0
+    y_pred_test = RF.predict(app_test_RF)
+    app_test_RF['TARGET'] = y_pred_test.astype(int)
+    return app_test_RF
+
+
+# TODO print
+app_test_RF = RF_app_test()
+print("RF tapp-test\n")
+
+# KNeighbors
+# Removing features from dataframe
+correlations = app_train.corr()['TARGET'].sort_values()
+highcor = []
+for index, value in correlations.tail(15).items():
+    highcor.append(index)
+app_train_short = app_train[highcor]
+
+
+# Data split into test and train for KNeighbors
+def KNeighbors_datasplit():
+    Xdf = app_train_short
+    Xdf.drop("TARGET", axis=1)
+    X_short = np.array(Xdf)
+    y_short = np.array(app_train_short["TARGET"])
+    # Recommended test sizes for crossvalidation : [20, 25, 30]
+    X_train_short, X_test_short, y_train_short, y_test_short = train_test_split(X_short,
+                                                                                y_short,
+                                                                                test_size=0.25,
+                                                                                stratify=y_short)
+    return X_short, y_short, X_train_short, X_test_short, y_train_short, y_test_short
+
+
+X_short, y_short, X_train_short, X_test_short, y_train_short, y_test_short = KNeighbors_datasplit()
+
+# Hyper parameters
+param_grid = {'n_neighbors': np.arange(1, 5),
+              'metric': ['euclidean', 'manhattan']
+              }
+grid = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5)
+
+# Model training
+grid.fit(X_train_short, y_train_short)
+
+# Kneighbors best score
+
+KScore = round(grid.best_score_, 2) * 100
+
+# Kneighbors best parameters
+
+Kbest_param = grid.best_params_
+
+# Saving best Kneighbors model
+
+KN = grid.best_estimator_
+K_bestmodelscore = round(KN.score(X_test_short, y_test_short) * 100, 2)
+
+
+# Confusion Matrix
+def KN_confus_matrix():
+    conf_matrix = metrics.confusion_matrix(y_test_short, KN.predict(X_test_short))
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    KN_str = 'The confusion matrix shows us the number of :\n' + \
+          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, KN_str
+
+
+KN_conf_fig, KN_conf_str = KN_confus_matrix()
+print("KN Confusion Matrix\n")
+# Kneighbors Cross Validation Accuracy
+
+KN_accu = "Accuracy score using cross validation:" + \
+          str(round((cross_val_score(KN, X_train_short, y_train_short, cv=3,
+                                     scoring='accuracy').mean()) * 100, 2)) + '%\n'
+print("KN accuracy score\n")
+
+# Learning Curve
+
+N, train_score, val_score = learning_curve(KN,
+                                           X_train_short,
+                                           y_train_short,
+                                           train_sizes=np.linspace(0.1, 1.0, 10),
+                                           cv=5)
+
+plt.plot(N, train_score.mean(axis=1), label='train')
+plt.plot(N, val_score.mean(axis=1), label='validation')
+plt.xlabel('train_sizes')
+plt.legend()
+plt.show()
+
 
 # Comparing models on app-test
-LR_target = app_test_LR['TARGET']
-DT_target = app_test_DT['TARGET']
-RF_target = app_test_RF['TARGET']
+def comparison_on_app_test():
+    LR_target = app_test_LR['TARGET']
+    DT_target = app_test_DT['TARGET']
+    RF_target = app_test_RF['TARGET']
 
-if LR_target.equals(DT_target):
-    if LR_target.equals(RF_target):
-        comparison = "All three models found the same target values on application test.\n"
-else:
-    comparison = "All three models did not find the same target values on application test.\n"
+    if LR_target.equals(DT_target):
+        if LR_target.equals(RF_target):
+            return "All three models found the same target values on application test.\n"
+    else:
+        return "All three models did not find the same target values on application test.\n"
+
+
+comparison = comparison_on_app_test()
 
 ######################################################
 
@@ -384,7 +549,7 @@ sidebar = html.Div(
                 dbc.NavLink("Random Forest", href="/random-forest", active="exact"),
                 html.Br(),
                 html.Br(),
-                dbc.NavLink("XGBoost", href="/xgboost", active="exact"),
+                dbc.NavLink("KNeighbors", href="/kneighbors", active="exact"),
                 html.Br(),
                 html.Br(),
                 dbc.NavLink("Model testing on application test", href="/app-test", active="exact"),
@@ -433,7 +598,7 @@ layout_index = html.Div([
     html.Br(),
     dcc.Link('Random Forest', href='/random-forest'),
     html.Br(),
-    dcc.Link('XGBoost', href='/xgboost'),
+    dcc.Link('KNeighbors', href='/kneighbors'),
     html.Br(),
     dcc.Link('Model testing on Application Test', href='/app-test'),
     html.Br(),
@@ -605,16 +770,28 @@ layout_page_3 = html.Div([
 
     # Accuracy
     html.P(RF_accu)
-
 ])
 
-# XGBoost
+# KNeighbors
 
 layout_page_4 = html.Div([
-    html.H1('XGBoost'),
+    html.H1('KNeighbors'),
     html.Hr(),
     html.Br(),
 
+    # Confusion Matrix
+    html.Div(className='container',
+             children=[
+                 html.P('KNeighbors Classifier Confusion Matrix:'),
+                 dcc.Graph(figure=KN_conf_fig),
+             ], style={'textAlign': 'center'}),
+    html.P(KN_conf_str),
+
+    # Accuracy
+    html.P(KN_accu),
+
+    # Learning Curve
+    # TODO
 ])
 
 # Comparing Models on app-test
