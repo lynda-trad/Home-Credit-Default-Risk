@@ -89,13 +89,15 @@ unbalanced_count = 'Target distribution before:\n0: ' + str(app_train['TARGET'].
                    + '1: ' + str(app_train['TARGET'].value_counts()[1])
 print("unbalanced fig\n")
 
-# Oversampling
-msk = app_train['TARGET'] == 1
-num_to_oversample = len(app_train) - 2 * msk.sum()
-df_positive_oversample = app_train[msk].sample(n=num_to_oversample, replace=True)
-df_train_oversample = pd.concat([app_train, df_positive_oversample])
-app_train = df_train_oversample
-print("oversampling\n")
+# Undersampling
+X = app_train
+Y = np.array(app_train['TARGET'])
+X.drop('TARGET', axis=1, inplace=True)
+
+rus = RandomUnderSampler(random_state=0)
+app_train, y_resampled = rus.fit_resample(X,Y)
+app_train['TARGET'] = y_resampled
+print(sorted(Counter(y_resampled).items()), y_resampled.shape)
 
 # Balanced Data
 balanced_train_fig = px.histogram(app_train,
