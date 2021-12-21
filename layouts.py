@@ -26,7 +26,7 @@ from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 
 # Random Forest
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 # XGBoost
 import xgboost as xgb
@@ -225,19 +225,38 @@ employ_boxplot_af = px.box(app_train,
 print("employ boxplot\n")
 
 
+# Boruta
 # Splitting data into train / test
-def data_split():
-    Xdf = app_train
-    Xdf.drop("TARGET", axis=1)
-    X = np.array(Xdf)
-    y = np.array(app_train["TARGET"])
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y)
-    return X, y, X_train, X_test, y_train, y_test
+def data_split(app_test):
+    Xdf = app_train.copy()
+    Xdf.drop('TARGET', axis = 1, inplace = True)
+    X_boruta = Xdf
+
+    y = app_train["TARGET"]
+    forest = RandomForestRegressor(
+        n_jobs=-1,
+        max_depth=5
+    )
+
+    boruta = bp(
+        estimator=forest,
+        n_estimators=5,
+        max_iter=100 # numbers of trials
+    )
+    # Features to keep
+    boruta.fit(np.array(X_boruta), np.array(y))
+    green_area = X_boruta.columns[boruta.support_].to_list()
+    blue_area = X_boruta.columns[boruta.support_weak_].to_list()
+    features = green_area + blue_area
+    X = X_boruta[features]
+    app_test = app_test[features]
+    return X, y, X_train, X_test, y_train, y_test, app_test
 
 
-X, y, X_train, X_test, y_train, y_test = data_split()
+X, y, X_train, X_test, y_train, y_test, app_test = data_split(app_test)
 # real = "Real values:\n\n" + y_test
 print("split data into test/train\n")
+
 
 # Logistic Regression
 LR = LogisticRegression()
@@ -303,7 +322,7 @@ print("LR Model score\n")
 # Testing on app-test
 def LR_app_test():
     app_test_LR = app_test.copy()
-    app_test_LR['TARGET'] = 0
+    # app_test_LR['TARGET'] = 0
     y_pred_test = LR.predict(app_test_LR)
     app_test_LR['TARGET'] = y_pred_test.astype(int)
     return app_test_LR
@@ -351,7 +370,7 @@ print("DT accuracy score\n")
 # Testing on app-test
 def DT_app_test():
     app_test_DT = app_test.copy()
-    app_test_DT['TARGET'] = 0
+    # app_test_DT['TARGET'] = 0
     y_pred_test = DT.predict(app_test_DT)
     app_test_DT['TARGET'] = y_pred_test.astype(int)
     return app_test_DT
@@ -400,7 +419,7 @@ print("RF accuracy score\n")
 # Testing on app-test
 def RF_app_test():
     app_test_RF = app_test.copy()
-    app_test_RF['TARGET'] = 0
+    # app_test_RF['TARGET'] = 0
     y_pred_test = RF.predict(app_test_RF)
     app_test_RF['TARGET'] = y_pred_test.astype(int)
     return app_test_RF
@@ -499,6 +518,30 @@ plt.show()
 
 # Comparing models on app-test
 def comparison_on_app_test():
+    """
+    # NEW CODE
+    # TODO
+    LR_target = app_test_LR['TARGET']
+    DT_target = app_test_DT['TARGET']
+    RF_target = app_test_RF['TARGET']
+
+    one_dif = LR_target.compare(DT_target)
+    two_dif = LR_target.compare(RF_target)
+    three_dif = DT_target.compare(RF_target)
+
+    print('Difference between LR and DT on app_test:\nNumber of differences:', len(one_dif), '\n', one_dif)
+    print('Difference between LR and RF on app_test:\nNumber of differences:', len(two_dif), '\n', two_dif)
+    print('Difference between DT and RF on app_test:\nNumber of differences:', len(three_dif), '\n', three_dif)
+
+    if DT_target.equals(RF_target):
+        print("Decision Tree and Random Forest found the same target values on application test")
+
+    if LR_target.equals(DT_target):
+        if LR_target.equals(RF_target):
+            print("All three models found the same target values on application test.")
+    else:
+        print("All three models did not find the same target values on application test.")
+    """
     LR_target = app_test_LR['TARGET']
     DT_target = app_test_DT['TARGET']
     RF_target = app_test_RF['TARGET']
