@@ -9,6 +9,19 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import graphviz
 
+# Undersampling
+from imblearn.under_sampling import RandomUnderSampler
+from collections import Counter
+
+# Grid Search
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+
+# Boruta
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy as bp
+from sklearn.datasets import load_boston
+
 # Machine Learning Library
 from sklearn import metrics
 from sklearn.metrics import multilabel_confusion_matrix, classification_report, accuracy_score, precision_score
@@ -162,7 +175,7 @@ def labelEncodingAppTrain():
     le = LabelEncoder()
     count = 0
     for col in app_train:
-        if app_train[col].dtype == 'object':
+        if app_train[col].dtype == 'object' or app_train[col].dtype == 'string':
             le.fit(app_train[col])
             app_train[col] = le.transform(app_train[col])
             app_test[col] = le.transform(app_test[col])
@@ -229,7 +242,7 @@ print("employ boxplot\n")
 # Splitting data into train / test
 def data_split(app_test):
     Xdf = app_train.copy()
-    Xdf.drop('TARGET', axis = 1, inplace = True)
+    Xdf.drop('TARGET', axis=1, inplace=True)
     X_boruta = Xdf
 
     y = app_train["TARGET"]
@@ -240,7 +253,7 @@ def data_split(app_test):
 
     boruta = bp(
         estimator=forest,
-        n_estimators=5,
+        n_estimators=20,
         max_iter=100 # numbers of trials
     )
     # Features to keep
@@ -430,30 +443,6 @@ app_test_RF = RF_app_test()
 print("RF tapp-test\n")
 
 # KNeighbors
-# Removing features from dataframe
-correlations = app_train.corr()['TARGET'].sort_values()
-highcor = []
-for index, value in correlations.tail(15).items():
-    highcor.append(index)
-app_train_short = app_train[highcor]
-
-
-# Data split into test and train for KNeighbors
-def KNeighbors_datasplit():
-    Xdf = app_train_short
-    Xdf.drop("TARGET", axis=1)
-    X_short = np.array(Xdf)
-    y_short = np.array(app_train_short["TARGET"])
-    # Recommended test sizes for crossvalidation : [20, 25, 30]
-    X_train_short, X_test_short, y_train_short, y_test_short = train_test_split(X_short,
-                                                                                y_short,
-                                                                                test_size=0.25,
-                                                                                stratify=y_short)
-    return X_short, y_short, X_train_short, X_test_short, y_train_short, y_test_short
-
-
-X_short, y_short, X_train_short, X_test_short, y_train_short, y_test_short = KNeighbors_datasplit()
-
 # Hyper parameters
 param_grid = {'n_neighbors': np.arange(1, 5),
               'metric': ['euclidean', 'manhattan']
@@ -461,7 +450,7 @@ param_grid = {'n_neighbors': np.arange(1, 5),
 grid = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5)
 
 # Model training
-grid.fit(X_train_short, y_train_short)
+grid.fit(X_train, y_train)
 
 # Kneighbors best score
 
@@ -474,12 +463,12 @@ Kbest_param = grid.best_params_
 # Saving best Kneighbors model
 
 KN = grid.best_estimator_
-K_bestmodelscore = round(KN.score(X_test_short, y_test_short) * 100, 2)
+K_bestmodelscore = round(KN.score(X_test, y_test) * 100, 2)
 
 
 # Confusion Matrix
 def KN_confus_matrix():
-    conf_matrix = metrics.confusion_matrix(y_test_short, KN.predict(X_test_short))
+    conf_matrix = metrics.confusion_matrix(y_test, KN.predict(X_test))
     x = ['0', '1']
     y = ['1', '0']
     conf_value = [[str(y) for y in x] for x in conf_matrix]
@@ -497,15 +486,15 @@ print("KN Confusion Matrix\n")
 # Kneighbors Cross Validation Accuracy
 
 KN_accu = "Accuracy score using cross validation:" + \
-          str(round((cross_val_score(KN, X_train_short, y_train_short, cv=3,
+          str(round((cross_val_score(KN, X_train, y_train, cv=3,
                                      scoring='accuracy').mean()) * 100, 2)) + '%\n'
 print("KN accuracy score\n")
 
 # Learning Curve
 
 N, train_score, val_score = learning_curve(KN,
-                                           X_train_short,
-                                           y_train_short,
+                                           X_train,
+                                           y_train,
                                            train_sizes=np.linspace(0.1, 1.0, 10),
                                            cv=5)
 
