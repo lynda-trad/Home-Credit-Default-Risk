@@ -77,6 +77,9 @@ alignment = 'Application train:\n\n' + 'Number of rows: ' + str(app_train.shape[
             + '\n' + 'Number of columns: ' + str(app_test.shape[1])
 print("aligning dataset\n")
 
+#################################
+# DATAVIZ
+
 # Unbalanced Data
 unbalanced_train_fig = px.histogram(app_train,
                                     x="TARGET",
@@ -89,31 +92,39 @@ unbalanced_count = 'Target distribution before:\n0: ' + str(app_train['TARGET'].
                    + '1: ' + str(app_train['TARGET'].value_counts()[1])
 print("unbalanced fig\n")
 
-# Undersampling
-X = app_train
-Y = np.array(app_train['TARGET'])
-X.drop('TARGET', axis=1, inplace=True)
-
-rus = RandomUnderSampler(random_state=0)
-app_train, y_resampled = rus.fit_resample(X,Y)
-app_train['TARGET'] = y_resampled
-print(sorted(Counter(y_resampled).items()), y_resampled.shape)
-
-# Balanced Data
-balanced_train_fig = px.histogram(app_train,
-                                  x="TARGET",
+# Education Type
+education_type_fig = px.histogram(app_train,
+                                  y="NAME_EDUCATION_TYPE",
                                   color="TARGET",
-                                  title='Balanced Data',
-                                  height=700,
-                                  width=1000
-                                  )
-balanced_count = 'Target distribution after:\n0: ' + str(app_train['TARGET'].value_counts()[0]) + '\n' \
-                 + '1: ' + str(app_train['TARGET'].value_counts()[1])
-compare_balance = unbalanced_count + '\n' + balanced_count
-print("balanced fig\n")
+                                  title='Repayment distribution depending on the education type')
+
+# Occupation Type
+occupation_type_fig = px.histogram(app_train,
+                                   y="NAME_HOUSING_TYPE",
+                                   color="TARGET",
+                                   title='Repayment distribution depending on the occupation type')
+
+# Housing Type
+housing_type_fig = px.histogram(app_train,
+                                y="OCCUPATION_TYPE",
+                                color="TARGET",
+                                title='Repayment distribution depending on the housing type')
+
+# Number of Children
+children_num_fig = px.histogram(app_train,
+                                x="CNT_CHILDREN",
+                                color="TARGET",
+                                title='Repayment distribution depending on the number of children')
+
+# Family Status
+family_status_fig = px.histogram(app_train,
+                                 y="NAME_FAMILY_STATUS",
+                                 color="TARGET",
+                                 title='Repayment distribution depending on the family status')
 
 
 # Gender Distribution
+
 def gender_distribution():
     gender_group = app_train.groupby(['CODE_GENDER']).size().reset_index(name='count')
     return px.pie(gender_group,
@@ -125,8 +136,13 @@ def gender_distribution():
                   )
 
 
-gender_fig = gender_distribution()
+gender_pie_fig = gender_distribution()
 print("gender distribution\n")
+
+gender_hist_fig = px.histogram(app_train,
+                               x="CODE_GENDER",
+                               color="TARGET",
+                               title='Repayment distribution among genders')
 
 
 # Contract Type Distribution
@@ -143,8 +159,6 @@ print("contract distribution\n")
 
 
 # DAYS BIRTH feature
-# TODO
-#  (app_train['DAYS_BIRTH'] / -365).describe()
 
 # Min - Max
 def birth_min_max():
@@ -152,7 +166,7 @@ def birth_min_max():
     if mini > 365:
         birth_mini = "Days birth min: " + str(mini / 365) + " years\n"
     else:
-        "Days birth min: " + str(mini) + " days\n"
+        birth_mini = "Days birth min: " + str(mini) + " days\n"
     maxi = abs(app_train['DAYS_BIRTH'].min())
     birth_maxi = "Days birth max: " + str(maxi / 365) + " years\n"
     return birth_mini + '\n' + birth_maxi
@@ -171,43 +185,7 @@ daysbirth_boxplot = px.box(app_train,
 print("birth boxplot\n")
 
 
-# Label encoding
-
-def labelEncodingAppTrain():
-    le = LabelEncoder()
-    count = 0
-    for col in app_train:
-        if app_train[col].dtype == 'object' or app_train[col].dtype == 'string':
-            le.fit(app_train[col])
-            app_train[col] = le.transform(app_train[col])
-            app_test[col] = le.transform(app_test[col])
-            count += 1
-    app_train.reset_index()
-    app_test.reset_index()
-    return app_train, app_test, count
-
-
-app_train, app_test, le_count = labelEncodingAppTrain()
-label_encoding_str = '%d columns were label encoded.' % le_count
-print("label encoding\n")
-
-# Replacing Infinite values with NaN values
-
-app_train.replace([np.inf, -np.inf], np.nan, inplace=True)
-app_test.replace([np.inf, -np.inf], np.nan, inplace=True)
-imputer = SimpleImputer(missing_values=np.nan, strategy="median").fit(app_train)
-imputer = imputer.fit_transform(app_train)
-app_train = pd.DataFrame(imputer, columns=app_train.columns.values.tolist())
-imputer = SimpleImputer(missing_values=np.nan, strategy="median").fit(app_test)
-imputer = imputer.fit_transform(app_test)
-app_test = pd.DataFrame(imputer, columns=app_test.columns.values.tolist())
-print("infinite and nan values\n")
-
-
 # Days Employed feature
-
-# TODO
-#  (app_train['DAYS_EMPLOYED'] / -365).describe()
 
 # Min - Max
 def employ_min_max():
@@ -240,160 +218,103 @@ employ_boxplot_af = px.box(app_train,
 print("employ boxplot\n")
 
 
+#################################
+# DATA CLEANUP
+
+# Label encoding
+
+def labelEncodingAppTrain():
+    le = LabelEncoder()
+    count = 0
+    for col in app_train:
+        if app_train[col].dtype == 'object' or app_train[col].dtype == 'string':
+            le.fit(app_train[col])
+            app_train[col] = le.transform(app_train[col])
+            app_test[col] = le.transform(app_test[col])
+            count += 1
+    app_train.reset_index()
+    app_test.reset_index()
+    return app_train, app_test, count
+
+
+app_train, app_test, le_count = labelEncodingAppTrain()
+label_encoding_str = '%d columns were label encoded.' % le_count
+print("label encoding\n")
+
+# Infinite Values
+app_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+app_test.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+# Missing Values
+# app_train
+imputer = SimpleImputer(missing_values=np.nan, strategy="median").fit(app_train)
+imputer = imputer.fit_transform(app_train)
+app_train = pd.DataFrame(imputer, columns=app_train.columns.values.tolist())
+# app_test
+imputer = SimpleImputer(missing_values=np.nan, strategy="median").fit(app_test)
+imputer = imputer.fit_transform(app_test)
+app_test = pd.DataFrame(imputer, columns=app_test.columns.values.tolist())
+print("infinite and nan values\n")
+
+# Undersampling
+X = app_train
+Y = np.array(app_train['TARGET'])
+X.drop('TARGET', axis=1, inplace=True)
+
+rus = RandomUnderSampler(random_state=0)
+app_train, y_resampled = rus.fit_resample(X, Y)
+app_train['TARGET'] = y_resampled
+print(sorted(Counter(y_resampled).items()), y_resampled.shape)
+
+# Balanced Data
+balanced_train_fig = px.histogram(app_train,
+                                  x="TARGET",
+                                  color="TARGET",
+                                  title='Balanced Data',
+                                  height=700,
+                                  width=1000
+                                  )
+balanced_count = 'Target distribution after:\n0: ' + str(app_train['TARGET'].value_counts()[0]) + '\n' \
+                 + '1: ' + str(app_train['TARGET'].value_counts()[1])
+compare_balance = unbalanced_count + '\n' + balanced_count
+print("balanced fig\n")
+
 # Boruta
 # Splitting data into train / test
-def data_split(app_test):
+print("Starting Boruta\n")
+
+# App train ou app test dans data split ????
+def data_split(app_train):
     Xdf = app_train.copy()
     Xdf.drop('TARGET', axis=1, inplace=True)
     X_boruta = Xdf
-
     y = app_train["TARGET"]
+
     forest = RandomForestRegressor(
         n_jobs=-1,
         max_depth=5
     )
-
     boruta = bp(
         estimator=forest,
         n_estimators=20,
-        max_iter=100 # numbers of trials
+        max_iter=100  # numbers of trials
     )
-    # Features to keep
     boruta.fit(np.array(X_boruta), np.array(y))
+
+    # Features to keep
     green_area = X_boruta.columns[boruta.support_].to_list()
     blue_area = X_boruta.columns[boruta.support_weak_].to_list()
     features = green_area + blue_area
+
     X = X_boruta[features]
-    app_test = app_test[features]
-    return X, y, X_train, X_test, y_train, y_test, app_test
+    app_train = app_train[features]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y)
+    return X, y, X_train, X_test, y_train, y_test, app_train
 
 
-X, y, X_train, X_test, y_train, y_test, app_test = data_split(app_test)
+X, y, X_train, X_test, y_train, y_test, app_train = data_split(app_train)
 # real = "Real values:\n\n" + y_test
 print("split data into test/train\n")
-
-
-# Logistic Regression
-LR = LogisticRegression()
-LR.fit(X_train, y_train)
-y_pred = LR.predict(X_test)
-# TODO
-#  LR_predictions = "Predictions:\n\n" + y_pred + '\n'
-#  LR_results = LR_predictions + '\n' + real
-print("LR predict\n")
-
-
-# LR Confusion matrix
-def LR_confus_matrix():
-    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-    x = ['0', '1']
-    y = ['1', '0']
-    conf_value = [[str(y) for y in x] for x in conf_matrix]
-    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
-    LR_str = 'The confusion matrix shows us the number of :\n' + \
-          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
-    return fig, LR_str
-
-
-LR_conf_fig, LR_conf_str = LR_confus_matrix()
-print("LR confusion matrix\n")
-
-
-# Model score
-def LR_model_score():
-    LR_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
-              "\nAccuracy score using cross validation:" + \
-              str(round((cross_val_score(LR, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
-    print("LR accuracy score\n")
-
-    LR_precis = "Precision score:" + str(round((precision_score(y_test, y_pred, average='macro') * 100), 2)) + '%\n'
-    print("LR precision score\n")
-
-    LR_recall = "Recall score:" + str(round((metrics.recall_score(y_test, y_pred) * 100), 2)) + '%\n'
-    print("LR recall score\n")
-
-    LR_F1 = "F1 Score:", str(round((metrics.f1_score(y_test, y_pred) * 100), 2)) + '%\n'
-    print("LR F1 score\n")
-    return LR_accu, LR_precis, LR_recall, LR_F1
-
-
-LR_accu, LR_precis, LR_recall, LR_F1 = LR_model_score()
-print("LR Model score\n")
-
-
-# ROC CURVE
-# TODO
-#  prediction_prob = LR.predict_proba(X_test)[::, 1]
-#  fpr, tpr, _ = metrics.roc_curve(y_test, prediction_prob)
-#  auc = metrics.roc_auc_score(y_test, prediction_prob)
-#  plt.title("Receiver Operating Characteristic curve")
-#  plt.plot(fpr, tpr, label="AUC=" + str(auc))
-#  plt.legend(loc=4)
-#  plt.show()
-
-# Testing on app-test
-def LR_app_test():
-    app_test_LR = app_test.copy()
-    # app_test_LR['TARGET'] = 0
-    y_pred_test = LR.predict(app_test_LR)
-    app_test_LR['TARGET'] = y_pred_test.astype(int)
-    return app_test_LR
-
-
-app_test_LR = LR_app_test()
-# TODO print
-print("LR app-test\n")
-
-# Decision Tree
-DT = DecisionTreeClassifier(criterion='gini')
-DT.fit(X_train, y_train)
-y_pred = DT.predict(X_test)
-
-
-# TODO
-#  DT_predictions = "Predictions:\n\n" + str(y_pred) + '\n'
-#  DT_results = DT_predictions + '\n' + real
-
-# DT Confusion Matrix
-def DT_confus_matrix():
-    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-    x = ['0', '1']
-    y = ['1', '0']
-    conf_value = [[str(y) for y in x] for x in conf_matrix]
-    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
-    DT_str = 'The confusion matrix shows us the number of :\n' + \
-          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
-    return fig, DT_str
-
-
-DT_conf_fig, DT_conf_str = DT_confus_matrix()
-print("DT confusion matrix\n")
-
-# Model score
-DT_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
-          "\nAccuracy score using cross validation:" + \
-          str(round((cross_val_score(DT, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
-print("DT accuracy score\n")
-
-
-# Testing on app-test
-def DT_app_test():
-    app_test_DT = app_test.copy()
-    # app_test_DT['TARGET'] = 0
-    y_pred_test = DT.predict(app_test_DT)
-    app_test_DT['TARGET'] = y_pred_test.astype(int)
-    return app_test_DT
-
-
-# TODO print
-app_test_DT = DT_app_test()
-print('DT app-test\n')
 
 # Random Forest
 
@@ -414,21 +335,37 @@ def RF_confus_matrix():
     conf_value = [[str(y) for y in x] for x in conf_matrix]
     fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
     RF_str = 'The confusion matrix shows us the number of :\n' + \
-          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+             '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+             '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+             '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+             '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
     return fig, RF_str
 
 
 RF_conf_fig, RF_conf_str = RF_confus_matrix()
 print("RF confusion matrix\n")
 
+
 # Model score
-RF_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
-          "\nAccuracy score using cross validation:" + \
-          str(round((cross_val_score(RF, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
-print("RF accuracy score\n")
+def RF_model_score():
+    RF_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
+              "\nAccuracy score using cross validation:" + \
+              str(round((cross_val_score(RF, X_train, y_train, cv=3, scoring='accuracy').mean()) * 100, 2)) + '%\n'
+    print("LR accuracy score\n")
+
+    RF_precis = "Precision score:" + str(round((precision_score(y_test, y_pred, average='macro') * 100), 2)) + '%\n'
+    print("LR precision score\n")
+
+    RF_recall = "Recall score:" + str(round((metrics.recall_score(y_test, y_pred) * 100), 2)) + '%\n'
+    print("LR recall score\n")
+
+    RF_F1 = "F1 Score:", str(round((metrics.f1_score(y_test, y_pred) * 100), 2)) + '%\n'
+    print("LR F1 score\n")
+    return RF_accu, RF_precis, RF_recall, RF_F1
+
+
+RF_accu, RF_precis, RF_recall, RF_F1 = RF_model_score()
+print("RF Model score\n")
 
 
 # Testing on app-test
@@ -476,10 +413,10 @@ def KN_confus_matrix():
     conf_value = [[str(y) for y in x] for x in conf_matrix]
     fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
     KN_str = 'The confusion matrix shows us the number of :\n' + \
-          '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
-          '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
-          '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
-          '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+             '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+             '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+             '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+             '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
     return fig, KN_str
 
 
@@ -505,46 +442,6 @@ plt.plot(N, val_score.mean(axis=1), label='validation')
 plt.xlabel('train_sizes')
 plt.legend()
 plt.show()
-
-
-# Comparing models on app-test
-def comparison_on_app_test():
-    """
-    # NEW CODE
-    # TODO
-    LR_target = app_test_LR['TARGET']
-    DT_target = app_test_DT['TARGET']
-    RF_target = app_test_RF['TARGET']
-
-    one_dif = LR_target.compare(DT_target)
-    two_dif = LR_target.compare(RF_target)
-    three_dif = DT_target.compare(RF_target)
-
-    print('Difference between LR and DT on app_test:\nNumber of differences:', len(one_dif), '\n', one_dif)
-    print('Difference between LR and RF on app_test:\nNumber of differences:', len(two_dif), '\n', two_dif)
-    print('Difference between DT and RF on app_test:\nNumber of differences:', len(three_dif), '\n', three_dif)
-
-    if DT_target.equals(RF_target):
-        print("Decision Tree and Random Forest found the same target values on application test")
-
-    if LR_target.equals(DT_target):
-        if LR_target.equals(RF_target):
-            print("All three models found the same target values on application test.")
-    else:
-        print("All three models did not find the same target values on application test.")
-    """
-    LR_target = app_test_LR['TARGET']
-    DT_target = app_test_DT['TARGET']
-    RF_target = app_test_RF['TARGET']
-
-    if LR_target.equals(DT_target):
-        if LR_target.equals(RF_target):
-            return "All three models found the same target values on application test.\n"
-    else:
-        return "All three models did not find the same target values on application test.\n"
-
-
-comparison = comparison_on_app_test()
 
 ######################################################
 
@@ -574,21 +471,10 @@ sidebar = html.Div(
                 dbc.NavLink("Data Study & Cleanup", href="/data", active="exact"),
                 html.Br(),
                 html.Br(),
-                dbc.NavLink("Logistic Regression", href="/logistic-regression", active="exact"),
-                html.Br(),
-                html.Br(),
-                dbc.NavLink("Decision Tree", href="/decision-tree", active="exact"),
-                html.Br(),
-                html.Br(),
                 dbc.NavLink("Random Forest", href="/random-forest", active="exact"),
                 html.Br(),
                 html.Br(),
-                dbc.NavLink("KNeighbors", href="/kneighbors", active="exact"),
-                html.Br(),
-                html.Br(),
-                dbc.NavLink("Model testing on application test", href="/app-test", active="exact"),
-                html.Br(),
-                html.Br(),
+                dbc.NavLink("KNeighbors", href="/kneighbors", active="exact")
             ],
             vertical=True,
             pills=True,
@@ -667,27 +553,62 @@ layout_page_0 = html.Div([
     html.P(alignment),
     html.Br(),
 
+    # Data Viz TODO
+
+    # Unbalanced Data
     html.Div(className='container',
              children=[
                  html.P('Unbalanced data figure :'),
                  dcc.Graph(figure=unbalanced_train_fig),
              ], style={'textAlign': 'center'}),
 
-    html.Div('* We oversample the dataframe to get an even amount of each target value.'),
-    html.P(compare_balance),
-    html.Br(),
-
+    # Education Type
     html.Div(className='container',
              children=[
-                 html.P('Balanced data figure :'),
-                 dcc.Graph(figure=balanced_train_fig),
-             ]),
+                 html.P('Education Type Repayment Distribution :'),
+                 dcc.Graph(figure=education_type_fig),
+             ], style={'textAlign': 'center'}),
+
+    # Occupation Type
+    html.Div(className='container',
+             children=[
+                 html.P('Occupation Type Repayment Distribution :'),
+                 dcc.Graph(figure=occupation_type_fig),
+             ], style={'textAlign': 'center'}),
+
+    # Housing Type
+    html.Div(className='container',
+             children=[
+                 html.P('Housing Type Repayment Distribution :'),
+                 dcc.Graph(figure=housing_type_fig),
+             ], style={'textAlign': 'center'}),
+
+    # Housing Type
+    html.Div(className='container',
+             children=[
+                 html.P('Repayment Distribution depending on the Number of Children :'),
+                 dcc.Graph(figure=children_num_fig),
+             ], style={'textAlign': 'center'}),
+
+    # Family Status
+    html.Div(className='container',
+             children=[
+                 html.P('Family Status Repayment Distribution :'),
+                 dcc.Graph(figure=family_status_fig),
+             ], style={'textAlign': 'center'}),
 
     # Gender Distribution PieChart
     html.Div(className='container',
              children=[
                  html.P('Gender Distribution piechart :'),
-                 dcc.Graph(figure=gender_fig),
+                 dcc.Graph(figure=gender_pie_fig),
+             ]),
+
+    # Gender Distribution Hist
+    html.Div(className='container',
+             children=[
+                 html.P('Repayment distribution between genders :'),
+                 dcc.Graph(figure=gender_hist_fig),
              ]),
 
     # Contract Type Distribution PieChart
@@ -717,82 +638,23 @@ layout_page_0 = html.Div([
 
 ])
 
-# Logistic Regression
-
-layout_page_1 = html.Div([
-    html.H1('Logistic Regression'),
-    html.Hr(),
-    html.Br(),
-    html.P("Our problem is a very binary one : will someone repay their credit or won't they ? \n"
-           "This is why we use logistic regression as our machine learning model.\n"),
-
-    # Confusion Matrix
-    html.Div(className='container',
-             children=[
-                 html.P('Logistic Regression Confusion Matrix:'),
-                 dcc.Graph(figure=LR_conf_fig),
-             ], style={'textAlign': 'center'}),
-    html.P(LR_conf_str),
-
-    # Accuracy
-    html.P(LR_accu),
-    html.P('Model accuracy is a machine learning model performance metric that is defined as the ratio of true '
-           'positives and true negatives to all positive and negative observations.\n'
-           'The accuracy rate is great but it doesn’t tell us anything about the errors our machine learning models '
-           'make on new data we haven’t seen before.\n'
-           'Mathematically, it represents the ratio of the sum of true positive and true negatives out of all the '
-           'predictions.\n'),
-
-    # Precision
-    html.P(LR_precis),
-    html.P("The precision score is a useful measure of the success of prediction when the classes are very "
-           "imbalanced.\n"
-           "Mathematically, it represents the ratio of true positive to the sum of true positive and false "
-           "positive.\n"),
-
-    # Recall
-    html.P(LR_recall),
-    html.P("Model recall score represents the model’s ability to correctly predict the positives out of actual "
-           "positives. This is unlike precision which measures how many predictions made by models are actually "
-           "positive out of all positive predictions made.\n"
-           "Recall score is a useful measure of success of prediction when the classes are very imbalanced.\n"
-           "Mathematically, it represents the ratio of true positive to the sum of true positive and false "
-           "negative.\n"),
-
-    # F1
-    html.P(LR_F1),
-    html.P("F1-score is harmonic mean of precision and recall score and is used as a metrics in the scenarios "
-           "where choosing either of precision or recall score can result in compromise in terms of model giving "
-           "high false positives and false negatives respectively.\n"),
-
-])
-
-# Decision Tree
-
-layout_page_2 = html.Div([
-    html.H1('Decision Tree'),
-    html.Hr(),
-    html.Br(),
-
-    # Confusion Matrix
-    html.Div(className='container',
-             children=[
-                 html.P('Decision Tree Confusion Matrix:'),
-                 dcc.Graph(figure=DT_conf_fig),
-             ], style={'textAlign': 'center'}),
-    html.P(DT_conf_str),
-
-    # Accuracy
-    html.P(DT_accu)
-
-])
-
 # Random Forest
 
 layout_page_3 = html.Div([
     html.H1('Random Forest'),
     html.Hr(),
     html.Br(),
+
+    html.Div('* We undersample the dataframe to get an even amount of each target value.'),
+    html.P(compare_balance),
+    html.Br(),
+
+    # Balanced Data
+    html.Div(className='container',
+             children=[
+                 html.P('Balanced data figure :'),
+                 dcc.Graph(figure=balanced_train_fig),
+             ]),
 
     # Confusion Matrix
     html.Div(className='container',
@@ -803,7 +665,36 @@ layout_page_3 = html.Div([
     html.P(RF_conf_str),
 
     # Accuracy
-    html.P(RF_accu)
+    html.P(RF_accu),
+    html.P('Model accuracy is a machine learning model performance metric that is defined as the ratio of true '
+           'positives and true negatives to all positive and negative observations.\n'
+           'The accuracy rate is great but it doesn’t tell us anything about the errors our machine learning models '
+           'make on new data we haven’t seen before.\n'
+           'Mathematically, it represents the ratio of the sum of true positive and true negatives out of all the '
+           'predictions.\n'),
+
+    # Precision
+    html.P(RF_precis),
+    html.P("The precision score is a useful measure of the success of prediction when the classes are very "
+           "imbalanced.\n"
+           "Mathematically, it represents the ratio of true positive to the sum of true positive and false "
+           "positive.\n"),
+
+    # Recall
+    html.P(RF_recall),
+    html.P("Model recall score represents the model’s ability to correctly predict the positives out of actual "
+           "positives. This is unlike precision which measures how many predictions made by models are actually "
+           "positive out of all positive predictions made.\n"
+           "Recall score is a useful measure of success of prediction when the classes are very imbalanced.\n"
+           "Mathematically, it represents the ratio of true positive to the sum of true positive and false "
+           "negative.\n"),
+
+    # F1
+    html.P(RF_F1),
+    html.P("F1-score is harmonic mean of precision and recall score and is used as a metrics in the scenarios "
+           "where choosing either of precision or recall score can result in compromise in terms of model giving "
+           "high false positives and false negatives respectively.\n"),
+
 ])
 
 # KNeighbors
@@ -812,6 +703,7 @@ layout_page_4 = html.Div([
     html.H1('KNeighbors'),
     html.Hr(),
     html.Br(),
+    html.P('We use GridSearch on KNeighbors and the Random Forest model.'),
 
     # Confusion Matrix
     html.Div(className='container',
@@ -827,34 +719,3 @@ layout_page_4 = html.Div([
     # Learning Curve
     # TODO
 ])
-
-# Comparing Models on app-test
-layout_page_5 = html.Div([
-    html.H1('Model testing on application test'),
-    html.Hr(),
-    html.Br(),
-    html.P(comparison)
-])
-
-'''
-
-    html.Div(className='container',
-             children=[
-                 html.P('Application train dataframe :'),
-                 dash_table.DataTable(
-                     id='data_first',
-                     columns=[{"name": i, "id": i} for i in columns],
-                     data=app_train.to_dict('records'),
-                     page_size=10,
-                     style_header={
-                         'backgroundColor': colors['background'],
-                         'color': colors['title']
-                     },
-                     style_data={
-                         'backgroundColor': colors['background'],
-                         'color': colors['text']
-                     },
-                 ),
-             ], style={'textAlign': 'center'}),
-
-'''
