@@ -3,13 +3,13 @@ from dash import html
 from dash.dependencies import Input, Output
 
 from app import app
-from layouts import sidebar, layout_index, \
+from layouts import navbar, layout_index, \
     layout_page_0, layout_page_3, layout_page_4
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content'),
-    sidebar
+    navbar,
+    html.Div(id='page-content')
 ])
 
 

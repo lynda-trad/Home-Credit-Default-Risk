@@ -1,13 +1,9 @@
 # ML Library
 import numpy as np
 import pandas as pd
-from pandas import Series, DataFrame
-import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
 import plotly.figure_factory as ff
-import graphviz
 
 # Undersampling
 from imblearn.under_sampling import RandomUnderSampler
@@ -29,20 +25,9 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 from sklearn.impute import SimpleImputer
-import joblib
-
-# Logistic Regression
-from sklearn.linear_model import LogisticRegression
-
-# Decision Tree
-from sklearn import tree
-from sklearn.tree import DecisionTreeClassifier
 
 # Random Forest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
-# XGBoost
-import xgboost as xgb
 
 from warnings import filterwarnings
 
@@ -125,6 +110,7 @@ family_status_fig = px.histogram(app_train,
 
 # Gender Distribution
 
+app_train = app_train[app_train.CODE_GENDER != 'XNA']
 def gender_distribution():
     gender_group = app_train.groupby(['CODE_GENDER']).size().reset_index(name='count')
     return px.pie(gender_group,
@@ -203,6 +189,9 @@ def employ_min_max():
 employ_minmax = employ_min_max()
 print("employed minmax\n")
 
+#################################
+# DATA CLEANUP
+
 # Removing anomalies
 app_train.drop(app_train.index[(app_train["DAYS_EMPLOYED"] > 12000)], axis=0, inplace=True)
 app_test.drop(app_test.index[(app_test["DAYS_EMPLOYED"] > 12000)], axis=0, inplace=True)
@@ -217,9 +206,6 @@ employ_boxplot_af = px.box(app_train,
                            )
 print("employ boxplot\n")
 
-
-#################################
-# DATA CLEANUP
 
 # Label encoding
 
@@ -279,12 +265,91 @@ balanced_count = 'Target distribution after:\n0: ' + str(app_train['TARGET'].val
 compare_balance = unbalanced_count + '\n' + balanced_count
 print("balanced fig\n")
 
+
+######################################
+# MACHINE LEARNING
+
+# Random Forest
+
+# RF Confusion Matrix
+def RF_confus_matrix():
+    conf_matrix = [[3772, 1687], [1867, 3592]]
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    RF_str = 'The confusion matrix shows us the number of :\n' + \
+             '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+             '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+             '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+             '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, RF_str
+
+
+RF_conf_fig, RF_conf_str = RF_confus_matrix()
+print("RF confusion matrix\n")
+
+
+# RF Model Score
+def RF_model_score():
+    RF_accu = "Accuracy score:" + '67.45' + '%\n' + \
+              "\nAccuracy score using cross validation:" + '67.13%' + '%\n'
+    print("RF accuracy score\n")
+
+    RF_precis = "Precision score:" + '67.47' + '%\n'
+    print("RF precision score\n")
+
+    RF_recall = "Recall score:" + '65.8' + '%\n'
+    print("RF recall score\n")
+
+    RF_F1 = "F1 Score:", '66.9' + '%\n'
+    print("RF F1 score\n")
+    return RF_accu, RF_precis, RF_recall, RF_F1
+
+
+RF_accu, RF_precis, RF_recall, RF_F1 = RF_model_score()
+
+print("RF model score\n")
+
+# KNeighbors
+# KNeighbors Best Model Score
+KN_bestmodelscore = str(55.99)
+print("KN best model score\n")
+
+
+#  Kneighbors Confusion Matrix
+def KN_confus_matrix():
+    conf_matrix = [[2977, 2482], [2323, 3136]]
+    x = ['0', '1']
+    y = ['1', '0']
+    conf_value = [[str(y) for y in x] for x in conf_matrix]
+    fig = ff.create_annotated_heatmap(conf_matrix, x=x, y=y, annotation_text=conf_value, colorscale='Viridis')
+    KN_str = 'The confusion matrix shows us the number of :\n' + \
+             '\n* True positives :' + str(conf_matrix[0][0]) + '\n' + \
+             '\n* True negatives :' + str(conf_matrix[0][1]) + '\n' + \
+             '\n* False positives:' + str(conf_matrix[1][0]) + '\n' + \
+             '\n* False negatives:' + str(conf_matrix[1][1]) + '\n'
+    return fig, KN_str
+
+
+KN_conf_fig, KN_conf_str = KN_confus_matrix()
+print("KN confusion matrix\n")
+
+# Kneighbors Cross Validation Accuracy
+
+KN_accu = "Accuracy score using cross validation:" + '56.33' + '%\n'
+print("KN accuracy score\n")
+
+"""
+# Previous Machine Learning
+
 # Boruta
 # Splitting data into train / test
 print("Starting Boruta\n")
 
+
 # App train ou app test dans data split ????
-def data_split(app_train):
+def data_split(app_train, app_test):
     Xdf = app_train.copy()
     Xdf.drop('TARGET', axis=1, inplace=True)
     X_boruta = Xdf
@@ -308,11 +373,12 @@ def data_split(app_train):
 
     X = X_boruta[features]
     app_train = app_train[features]
+    app_test = app_test[features]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y)
-    return X, y, X_train, X_test, y_train, y_test, app_train
+    return X, y, X_train, X_test, y_train, y_test, app_train, app_test
 
 
-X, y, X_train, X_test, y_train, y_test, app_train = data_split(app_train)
+X, y, X_train, X_test, y_train, y_test, app_train, app_test = data_split(app_train, app_test)
 # real = "Real values:\n\n" + y_test
 print("split data into test/train\n")
 
@@ -346,7 +412,7 @@ RF_conf_fig, RF_conf_str = RF_confus_matrix()
 print("RF confusion matrix\n")
 
 
-# Model score
+# RF Model score
 def RF_model_score():
     RF_accu = "Accuracy score:" + str(round((accuracy_score(y_test, y_pred) * 100), 2)) + '%\n' + \
               "\nAccuracy score using cross validation:" + \
@@ -368,7 +434,7 @@ RF_accu, RF_precis, RF_recall, RF_F1 = RF_model_score()
 print("RF Model score\n")
 
 
-# Testing on app-test
+# Testing RF on app-test
 def RF_app_test():
     app_test_RF = app_test.copy()
     # app_test_RF['TARGET'] = 0
@@ -388,14 +454,14 @@ param_grid = {'n_neighbors': np.arange(1, 5),
               }
 grid = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5)
 
-# Model training
+#  Kneighbors Model training
 grid.fit(X_train, y_train)
 
-# Kneighbors best score
+# KNeighbors Best Model Score
 
 KScore = round(grid.best_score_, 2) * 100
 
-# Kneighbors best parameters
+# Kneighbors Best Parameters
 
 Kbest_param = grid.best_params_
 
@@ -405,7 +471,7 @@ KN = grid.best_estimator_
 K_bestmodelscore = round(KN.score(X_test, y_test) * 100, 2)
 
 
-# Confusion Matrix
+#  Kneighbors Confusion Matrix
 def KN_confus_matrix():
     conf_matrix = metrics.confusion_matrix(y_test, KN.predict(X_test))
     x = ['0', '1']
@@ -422,6 +488,7 @@ def KN_confus_matrix():
 
 KN_conf_fig, KN_conf_str = KN_confus_matrix()
 print("KN Confusion Matrix\n")
+
 # Kneighbors Cross Validation Accuracy
 
 KN_accu = "Accuracy score using cross validation:" + \
@@ -429,7 +496,7 @@ KN_accu = "Accuracy score using cross validation:" + \
                                      scoring='accuracy').mean()) * 100, 2)) + '%\n'
 print("KN accuracy score\n")
 
-# Learning Curve
+#  Kneighbors Learning Curve
 
 N, train_score, val_score = learning_curve(KN,
                                            X_train,
@@ -441,55 +508,37 @@ plt.plot(N, train_score.mean(axis=1), label='train')
 plt.plot(N, val_score.mean(axis=1), label='validation')
 plt.xlabel('train_sizes')
 plt.legend()
-plt.show()
+# plt.show()
+"""
 
 ######################################################
 
 # Menu SideBar
-
-SIDEBAR_STYLE = {
-    "position": "fixed",
-    "top": 0,
-    "left": 0,
-    "bottom": 0,
-    "width": "15rem",
-    "padding": "2rem 1rem",
-    "background-color": "#202020",
-    "color": '#B8B8B8'
-}
-
-sidebar = html.Div(
+navbar = dbc.NavbarSimple(
     [
-        html.H2("Menu", className="display-4"),
-        html.Hr(),
-        dbc.Nav(
-            [
-                html.Br(),
-                dbc.NavLink("Home", href="/", active="exact"),
-                html.Br(),
-                html.Br(),
-                dbc.NavLink("Data Study & Cleanup", href="/data", active="exact"),
-                html.Br(),
-                html.Br(),
-                dbc.NavLink("Random Forest", href="/random-forest", active="exact"),
-                html.Br(),
-                html.Br(),
-                dbc.NavLink("KNeighbors", href="/kneighbors", active="exact")
+        dbc.NavItem(dbc.NavLink("Home", href="/")),
+        dbc.DropdownMenu(
+            children=[
+                dbc.DropdownMenuItem("More pages", header=True),
+                dbc.DropdownMenuItem("Data Study & Cleanup", href="/data"),
+                dbc.DropdownMenuItem("Random Forest", href="/random-forest"),
+                dbc.DropdownMenuItem("KNeighbors", href="/kneighbors"),
             ],
-            vertical=True,
-            pills=True,
+            nav=True,
+            in_navbar=True,
+            label="More",
         ),
-        html.Hr(),
-        html.Br(),
-        html.Img(src='./assets/bank.png')
     ],
-    style=SIDEBAR_STYLE,
+    brand="Menu",
+    brand_href="/",
+    color="navbar-bran",
+    dark=True,
 )
 
 url_bar_and_content_div = html.Div([
     dcc.Location(id='url', refresh=False),
+    navbar,
     html.Div(id='page-content'),
-    sidebar,
 ])
 
 # Home
@@ -512,15 +561,10 @@ layout_index = html.Div([
     html.H2('Summary'),
     dcc.Link('Data Study & cleanup', href='/data'),
     html.Br(),
-    dcc.Link('Regression Logistic', href='/logistic-regression'),
-    html.Br(),
-    dcc.Link('Decision Tree', href='/decision-tree'),
-    html.Br(),
     dcc.Link('Random Forest', href='/random-forest'),
     html.Br(),
     dcc.Link('KNeighbors', href='/kneighbors'),
     html.Br(),
-    dcc.Link('Model testing on Application Test', href='/app-test'),
     html.Br(),
 
     # Conclusion
@@ -553,7 +597,7 @@ layout_page_0 = html.Div([
     html.P(alignment),
     html.Br(),
 
-    # Data Viz TODO
+    # Data Viz
 
     # Unbalanced Data
     html.Div(className='container',
@@ -705,6 +749,9 @@ layout_page_4 = html.Div([
     html.Br(),
     html.P('We use GridSearch on KNeighbors and the Random Forest model.'),
 
+    # Best Model Score
+    html.P("Best Model Score: ", KN_bestmodelscore),
+
     # Confusion Matrix
     html.Div(className='container',
              children=[
@@ -716,6 +763,4 @@ layout_page_4 = html.Div([
     # Accuracy
     html.P(KN_accu),
 
-    # Learning Curve
-    # TODO
 ])
