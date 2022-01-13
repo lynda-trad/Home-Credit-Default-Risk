@@ -1,7 +1,12 @@
 # Home-Credit-Default-Risk
 
-Data Source:
+A bank wants to predict if a client will repay its loan using Machine Learning.
 
-You can get the data required from this link : 
+Using Feature Selection with Boruta, we will test multiple models :
+* KNeighbors Classifier with Grid Search
+* Logistic Regression
+* Decision Tree
+* Random Forest
+* XGBoost
 
-https://www.kaggle.com/c/home-credit-default-risk/data
+Data : https://www.kaggle.com/c/home-credit-default-risk/data
