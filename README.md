@@ -1,9 +1,13 @@
 # Home-Credit-Default-Risk
+## Machine Learning Classification
+Objective : Predict if a bank's client will repay a loan
 
-A bank wants to predict if a client will repay its loan using Machine Learning.
+Summary :
+
+* Data Visualisation
 
 Using Feature Selection with Boruta, we will test multiple models :
-* KNeighbors Classifier with Grid Search
+* KNeighbors with Grid Search
 * Logistic Regression
 * Decision Tree
 * Random Forest
