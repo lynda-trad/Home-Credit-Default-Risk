@@ -46,8 +46,8 @@ colors = {
 }
 # Machine Learning
 
-app_train = pd.read_csv("./resources/application_train.csv", encoding='utf-8', sep=',')
-app_test = pd.read_csv("./resources/application_test.csv", encoding='utf-8', sep=',')
+app_train = pd.read_csv("../resources/application_train.csv", encoding='utf-8', sep=',')
+app_test = pd.read_csv("../resources/application_test.csv", encoding='utf-8', sep=',')
 app_train.drop_duplicates()
 app_test.drop_duplicates()
 columns = app_train.iloc[:, :10]
@@ -578,7 +578,7 @@ layout_index = html.Div([
     html.Div('The bank would have not given the loan to someone who could have repaid it. '
              'This isn\'t so great for the clients.'),
     html.Br(),
-    html.Img(src='./assets/bank1.png'),
+    html.Img(src='assets/bank1.png'),
 ])
 
 # Data Study & Cleanup
@@ -590,7 +590,7 @@ layout_page_0 = html.Div([
 
     # Data before cleanup
     html.H2('Dataframe before cleanup'),
-    html.Img(src='./assets/train_dtable.jpg'),
+    html.Img(src='assets/train_dtable.jpg'),
     html.Br(),
     html.Div('We align the train and test dataframes so that they have the same columns. '
              'This way, our models will learn and predict targets with the same features.'),
